@@ -1,13 +1,14 @@
-import { useState } from 'react'
-import { Image, View, TouchableOpacity, FlatList, Modal, Text } from 'react-native'
+import { useState, useCallback } from 'react'
+import { Image, View, TouchableOpacity, FlatList, Modal, Text, Alert } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
-import { router } from 'expo-router'
+import { router, useFocusEffect } from 'expo-router'
 
 import { styles } from './styles'
 import { colors } from '@/styles/colors'
 import { categories } from '@/utils/categories'
 import { Categories } from '@/components/categories'
 import { Option } from '@/components/option'
+import { linkStorage, LinkStorage } from '@/storage/link-storage'
 import { Link } from '@/components/link'
 
 /*
@@ -15,7 +16,24 @@ import { Link } from '@/components/link'
 */
 
 export default function Index() {
+  const [links, setLinks] = useState<LinkStorage[]>([])
   const [category, setCategory] = useState(categories[0].name)
+
+  async function getLinks() {
+    try {
+      const response = await linkStorage.get()
+
+      const filtered = response.filter(item => item.category === category)
+
+      setLinks(filtered)
+    } catch (error) {
+      Alert.alert('Erro', 'Não foi possível carregar os links')
+    }
+  }
+
+  useFocusEffect(useCallback(() => {
+    getLinks()
+  }, [category]))
 
   return (
     <View style={styles.container}>
@@ -30,10 +48,13 @@ export default function Index() {
       <Categories onChange={setCategory} selected={category} />
 
       <FlatList
-        data={["1", "2", "3", "4"]}
-        keyExtractor={item => item}
-        renderItem={() => (
-          <Link name="Google" url="https://google.com" onDetails={() => console.log('clicou')} />
+        data={links}
+        keyExtractor={item => item.id}
+        renderItem={({ item }) => (
+          <Link
+            name={item.name}
+            url={item.url}
+            onDetails={() => console.log('clicou')} />
         )}
         style={styles.links}
         contentContainerStyle={styles.linksContent}
@@ -54,8 +75,8 @@ export default function Index() {
             <Text style={styles.modalUrl}>https://google.com</Text>
 
             <View style={styles.modalFooter}>
-              <Option name='Excluir' icon='delete' variant='secondary'/>
-              <Option name="Abrir" icon="language"/>
+              <Option name='Excluir' icon='delete' variant='secondary' />
+              <Option name="Abrir" icon="language" />
             </View>
 
           </View>
